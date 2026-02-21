@@ -1,9 +1,4 @@
-/* ============================================================
-   style.css — Smart Attendance Management System
-   Custom styles layered on top of Bootstrap 5
-   ============================================================ */
 
-/* ─────────────────── GLOBAL BASE ─────────────────── */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f5f7fa;
@@ -16,12 +11,10 @@ main {
     flex: 1;
 }
 
-/* Smooth transitions for all interactive elements */
 a, button, .btn, .card {
     transition: all 0.2s ease-in-out;
 }
 
-/* ─────────────────── NAVBAR ──────────────────────── */
 .navbar {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
@@ -31,7 +24,6 @@ a, button, .btn, .card {
     letter-spacing: 0.5px;
 }
 
-/* ─────────────────── CARDS ───────────────────────── */
 .card {
     border-radius: 10px;
 }
@@ -40,14 +32,12 @@ a, button, .btn, .card {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* ─────────────────── FORMS ───────────────────────── */
 .form-control:focus,
 .form-select:focus {
     border-color: #0d6efd;
     box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
 }
 
-/* ─────────────────── TABLES ──────────────────────── */
 .table th {
     font-weight: 600;
     font-size: 0.85rem;
@@ -59,13 +49,11 @@ a, button, .btn, .card {
     font-size: 0.9rem;
 }
 
-/* ─────────────────── BADGES ──────────────────────── */
 .badge {
     font-weight: 500;
     letter-spacing: 0.3px;
 }
 
-/* ─────────────────── PROGRESS BARS ──────────────── */
 .progress {
     border-radius: 10px;
     background-color: #e9ecef;
@@ -76,21 +64,16 @@ a, button, .btn, .card {
     transition: width 0.8s ease;
 }
 
-/* ─────────────────── ATTENDANCE TABLE ───────────── */
-/* Row highlight when student is marked present */
 .present-row {
     background-color: #d1e7dd !important;
     transition: background-color 0.3s ease;
 }
 
-/* Checkbox styling in attendance table */
 .attendance-checkbox {
     width: 1.2rem;
     height: 1.2rem;
     cursor: pointer;
 }
-
-/* Sticky first columns in wide tables */
 .sticky-col {
     position: sticky;
     left: 0;
@@ -99,8 +82,6 @@ a, button, .btn, .card {
     box-shadow: 2px 0 4px rgba(0,0,0,0.05);
 }
 
-/* ─────────────────── REMEDIAL CODE INPUT ─────────── */
-/* Large bold input for entering the 6-char code */
 #id_code {
     font-size: 1.8rem;
     letter-spacing: 6px;
@@ -116,7 +97,6 @@ a, button, .btn, .card {
     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
 }
 
-/* ─────────────────── NOTIFICATION LIST ──────────── */
 .list-group-item {
     border-left: 4px solid transparent;
     transition: border-color 0.2s;
@@ -130,7 +110,6 @@ a, button, .btn, .card {
     border-left-color: #0d6efd;
 }
 
-/* ─────────────────── STAT / DASHBOARD CARDS ─────── */
 .stat-card {
     cursor: default;
 }
@@ -140,12 +119,10 @@ a, button, .btn, .card {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
 }
 
-/* ─────────────────── HOME PAGE HERO ─────────────── */
 .hero-section {
     background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
 }
 
-/* ─────────────────── ALERT MESSAGES ─────────────── */
 .alert {
     border-radius: 8px;
     border-left: 5px solid;
@@ -156,7 +133,6 @@ a, button, .btn, .card {
 .alert-warning { border-left-color: #ffc107; }
 .alert-info    { border-left-color: #0dcaf0; }
 
-/* ─────────────────── CODE TAGS ──────────────────── */
 code {
     background-color: #f8f9fa;
     padding: 2px 6px;
@@ -166,12 +142,10 @@ code {
     border: 1px solid #e9ecef;
 }
 
-/* ─────────────────── FOOTER ─────────────────────── */
 footer {
     margin-top: auto;
 }
 
-/* ─────────────────── RESPONSIVE ADJUSTMENTS ─────── */
 @media (max-width: 576px) {
     .table-responsive table {
         font-size: 0.8rem;
@@ -183,7 +157,6 @@ footer {
     }
 }
 
-/* ─────────────────── PRINT (for reports) ─────────── */
 @media print {
     .navbar, .btn, footer, .alert { display: none !important; }
     .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
