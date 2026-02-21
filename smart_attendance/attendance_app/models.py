@@ -42,7 +42,6 @@ class FacultyProfile(models.Model):
     user        = models.OneToOneField(User, on_delete=models.CASCADE, related_name='faculty_profile')
     department  = models.CharField(max_length=100)
     employee_id = models.CharField(max_length=20, unique=True)
-    # Section assigned by admin (e.g. 'A', 'B', 'A & B', '3rd Year - Section A')
     section     = models.CharField(
         max_length=100,
         blank=True,
