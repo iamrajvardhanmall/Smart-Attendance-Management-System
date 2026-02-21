@@ -1,26 +1,10 @@
-"""
-forms.py — Form Validation for Smart Attendance Management System
-=================================================================
-All Django forms used for user input validation.
-Forms handle login, attendance, make-up sessions,
-and admin-only account creation (no self-registration allowed).
-"""
-
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
 from django.utils import timezone
 from .models import StudentProfile, FacultyProfile, Subject, MakeUpSession
 
-
-# ─────────────────────────────────────────────
-# LOGIN FORM
-# ─────────────────────────────────────────────
 class LoginForm(AuthenticationForm):
-    """
-    Extends Django's built-in login form.
-    Adds Bootstrap CSS classes to username/password fields.
-    """
     username = forms.CharField(
         label="Registration No. / Faculty ID",
         widget=forms.TextInput(attrs={
@@ -36,19 +20,7 @@ class LoginForm(AuthenticationForm):
         })
     )
 
-
-# ─────────────────────────────────────────────────────
-# ADMIN-ONLY: CREATE STUDENT ACCOUNT
-# Only site admin can create student accounts.
-# Login ID = 8-digit Registration Number (e.g. 12345678)
-# ─────────────────────────────────────────────────────
 class AdminStudentCreationForm(forms.Form):
-    """
-    Admin fills this form to create a new student account.
-    The 8-digit Registration Number becomes the student's login username.
-    No self-registration is allowed.
-    """
-    # ── Login credentials ──────────────────────
     registration_number = forms.CharField(
         label="Registration Number (8 digits)",
         min_length=8,
@@ -69,7 +41,6 @@ class AdminStudentCreationForm(forms.Form):
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Repeat password'})
     )
 
-    # ── Student personal info ──────────────────
     first_name = forms.CharField(
         max_length=50,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First name'})
@@ -83,7 +54,6 @@ class AdminStudentCreationForm(forms.Form):
         widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'student@college.edu'})
     )
 
-    # ── Academic info ──────────────────────────
     department = forms.CharField(
         max_length=100,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. CSE'})
@@ -119,7 +89,6 @@ class AdminStudentCreationForm(forms.Form):
     )
 
     def clean_registration_number(self):
-        """Must be exactly 8 numeric digits and not already taken."""
         reg = self.cleaned_data.get('registration_number', '')
         if not reg.isdigit():
             raise forms.ValidationError("Registration number must contain digits only.")
@@ -139,19 +108,7 @@ class AdminStudentCreationForm(forms.Form):
             raise forms.ValidationError("Passwords do not match.")
         return cleaned_data
 
-
-# ─────────────────────────────────────────────────────
-# ADMIN-ONLY: CREATE FACULTY ACCOUNT
-# Only site admin can create faculty accounts.
-# Login ID = 5-digit Faculty ID (e.g. FAC01)
-# ─────────────────────────────────────────────────────
 class AdminFacultyCreationForm(forms.Form):
-    """
-    Admin fills this form to create a new faculty account.
-    The 5-character Faculty ID becomes the faculty's login username.
-    No self-registration is allowed.
-    """
-    # ── Login credentials ──────────────────────
     faculty_id = forms.CharField(
         label="Faculty ID (5 characters, e.g. FAC01)",
         min_length=5,
@@ -170,8 +127,6 @@ class AdminFacultyCreationForm(forms.Form):
         label="Confirm Password",
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Repeat password'})
     )
-
-    # ── Faculty personal info ──────────────────
     first_name = forms.CharField(
         max_length=50,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First name'})
@@ -185,7 +140,6 @@ class AdminFacultyCreationForm(forms.Form):
         widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'faculty@college.edu'})
     )
 
-    # ── Department & Section ──────────────────
     department = forms.CharField(
         max_length=100,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. CSE'})
@@ -220,24 +174,16 @@ class AdminFacultyCreationForm(forms.Form):
             raise forms.ValidationError("Passwords do not match.")
         return cleaned_data
 
-
-# ─────────────────────────────────────────────
-# ATTENDANCE FILTER FORM
-# ─────────────────────────────────────────────
 class AttendanceFilterForm(forms.Form):
-    """
-    Used by faculty to select subject + date before
-    the student list is displayed for attendance marking.
-    """
     subject = forms.ModelChoiceField(
-        queryset=Subject.objects.none(),  # Populated in view based on logged-in faculty
+        queryset=Subject.objects.none(),  
         widget=forms.Select(attrs={'class': 'form-select'}),
         empty_label="-- Select Subject --"
     )
     date = forms.DateField(
         widget=forms.DateInput(attrs={
             'class': 'form-control',
-            'type': 'date'   # HTML5 date picker
+            'type': 'date'   
         }),
         initial=timezone.now().date
     )
@@ -248,15 +194,7 @@ class AttendanceFilterForm(forms.Form):
         if faculty:
             self.fields['subject'].queryset = Subject.objects.filter(faculty=faculty)
 
-
-# ─────────────────────────────────────────────
-# MAKE-UP SESSION CREATION FORM
-# ─────────────────────────────────────────────
 class MakeUpSessionForm(forms.ModelForm):
-    """
-    Faculty fills this form to schedule a make-up class.
-    remedial_code is auto-generated in the view (not shown here).
-    """
     class Meta:
         model  = MakeUpSession
         fields = ['subject', 'date', 'expiry_time', 'description']
@@ -280,10 +218,6 @@ class MakeUpSessionForm(forms.ModelForm):
             raise forms.ValidationError("Expiry time must be in the future.")
         return expiry
 
-
-# ─────────────────────────────────────────────
-# REMEDIAL CODE ENTRY FORM (for students)
-# ─────────────────────────────────────────────
 class RemedialCodeForm(forms.Form):
     """
     Simple form for student to enter a 6-character remedial code.
