@@ -76,7 +76,6 @@ def admin_create_student_view(request):
             last_name  = form.cleaned_data['last_name'],
             email      = form.cleaned_data.get('email', ''),
         )
-        # Create the linked StudentProfile (roll_no = same 8-digit number)
         student = StudentProfile.objects.create(
             user         = user,
             roll_no      = reg_no,
@@ -123,13 +122,8 @@ def admin_create_student_view(request):
     })
 
 
-@login_required
+@login_required # Login Required
 def admin_create_faculty_view(request):
-    """
-    ADMIN-ONLY: Create a new faculty account.
-    The 5-character Faculty ID is assigned by admin and becomes the faculty's login username.
-    Faculty cannot register themselves.
-    """
     if not request.user.is_staff:
         messages.error(request, "Access denied. Admin only.")
         return redirect('home')
@@ -137,18 +131,16 @@ def admin_create_faculty_view(request):
     form = AdminFacultyCreationForm(request.POST or None)
 
     if request.method == 'POST' and form.is_valid():
-        fid = form.cleaned_data['faculty_id']  # 5-character ID
+        fid = form.cleaned_data['faculty_id']  
 
-        # Create the Django User (username = 5-char faculty ID)
         user = User.objects.create_user(
             username   = fid,
             password   = form.cleaned_data['password1'],
             first_name = form.cleaned_data['first_name'],
             last_name  = form.cleaned_data['last_name'],
             email      = form.cleaned_data.get('email', ''),
-            is_staff   = True,  # Faculty have staff access
+            is_staff   = True,  
         )
-        # Create the linked FacultyProfile
         FacultyProfile.objects.create(
             user        = user,
             department  = form.cleaned_data['department'],
@@ -161,53 +153,30 @@ def admin_create_faculty_view(request):
             f"Name: Prof. {user.get_full_name()} | Login ID: {fid}"
         )
         return redirect('admin_create_faculty')
-
-    # List existing faculty for display on the same page
     faculty_list = FacultyProfile.objects.select_related('user').order_by('employee_id')
     return render(request, 'admin_dashboard/create_faculty.html', {
         'form': form,
         'faculty_list': faculty_list,
     })
 
-
-# ════════════════════════════════════════════════════════
-#  SECTION 2 — FACULTY VIEWS
-# ════════════════════════════════════════════════════════
-
 @faculty_required
 def faculty_dashboard_view(request):
-    """
-    Faculty dashboard:
-    - Shows list of subjects taught
-    - Total students, today's attendance count
-    - Recent absentee logs
-    - Make-up sessions created
-    """
     faculty  = request.user.faculty_profile
     subjects = Subject.objects.filter(faculty=faculty)
     today    = timezone.now().date()
-
-    # Count today's attendance records across all faculty subjects
     today_attendance = Attendance.objects.filter(
         subject__in=subjects,
         date=today
     ).count()
-
-    # Recent absentees (last 7 days)
     recent_absentees = AbsenteeLog.objects.filter(
         subject__in=subjects,
         date__gte=today - datetime.timedelta(days=7)
     ).order_by('-date')[:10]
-
-    # Upcoming / active make-up sessions
     upcoming_makeups = MakeUpSession.objects.filter(
         created_by=faculty,
         expiry_time__gt=timezone.now()
     ).order_by('date')[:5]
-
-    # Attendance prediction for each subject
     predictions = {s.id: predict_attendance(s) for s in subjects}
-
     context = {
         'faculty':          faculty,
         'subjects':         subjects,
@@ -222,60 +191,36 @@ def faculty_dashboard_view(request):
 
 @faculty_required
 def mark_attendance_view(request):
-    """
-    Two-step attendance process:
-    Step 1 (GET): Faculty selects subject + date → student list appears
-    Step 2 (POST): Faculty submits checked students → saved to DB
-
-    Logic:
-     - Checked students        → status = 'P' (Present)
-     - Unchecked students      → status = 'A' (Absent, auto-marked)
-     - Absent students trigger AbsenteeLog + Notification creation
-    """
     faculty = request.user.faculty_profile
     filter_form = AttendanceFilterForm(faculty=faculty, data=request.GET or None)
-
     students     = []
-    existing_map = {}  # {student_id: attendance_status}
+    existing_map = {}  
     subject      = None
     selected_date = None
-
-    # Step 1: Load student list when subject+date are chosen
     if filter_form.is_valid():
         subject       = filter_form.cleaned_data['subject']
         selected_date = filter_form.cleaned_data['date']
-
-        # Filter students by faculty section — only matching section students are shown
         if faculty.section:
             students = StudentProfile.objects.filter(
                 section=faculty.section
             ).order_by('roll_no')
         else:
-            # Faculty has no section assigned — show all students
             students = StudentProfile.objects.all().order_by('roll_no')
-
-        # Check if attendance already exists for this date
         existing = Attendance.objects.filter(subject=subject, date=selected_date)
         existing_map = {a.student_id: a.status for a in existing}
-
-    # Step 2: Process the submitted attendance form
     if request.method == 'POST':
         subject_id    = request.POST.get('subject_id')
         selected_date = request.POST.get('date')
-        present_ids   = request.POST.getlist('present_students')  # List of student IDs checked
-
+        present_ids   = request.POST.getlist('present_students')  
         subject       = get_object_or_404(Subject, id=subject_id, faculty=faculty)
         selected_date = datetime.date.fromisoformat(selected_date)
-        # Only process students in the faculty's section (mirrors the GET filter)
         if faculty.section:
             all_students = StudentProfile.objects.filter(section=faculty.section)
         else:
             all_students = StudentProfile.objects.all()
         absent_students = []
-
         for student in all_students:
             status = 'P' if str(student.id) in present_ids else 'A'
-            # update_or_create prevents duplicates (unique_together constraint)
             Attendance.objects.update_or_create(
                 student=student,
                 subject=subject,
@@ -285,7 +230,6 @@ def mark_attendance_view(request):
             if status == 'A':
                 absent_students.append(student)
 
-        # After saving, detect absentees and create notifications
         process_absentees(subject, selected_date, absent_students, faculty)
 
         msg = (
@@ -307,23 +251,14 @@ def mark_attendance_view(request):
 
 @faculty_required
 def attendance_report_view(request):
-    """
-    Shows attendance report for a selected subject.
-    Displays a table: each student vs each date.
-    Calculates per-student attendance %.
-    """
     faculty  = request.user.faculty_profile
     subjects = Subject.objects.filter(faculty=faculty)
-
     selected_subject = None
     report_data      = []
-    date_list        = []
-
+    date_list        = [
     subject_id = request.GET.get('subject')
     if subject_id:
         selected_subject = get_object_or_404(Subject, id=subject_id, faculty=faculty)
-
-        # Get all dates attendance was recorded for this subject
         date_list = (
             Attendance.objects
             .filter(subject=selected_subject)
@@ -331,8 +266,6 @@ def attendance_report_view(request):
             .distinct()
             .order_by('date')
         )
-
-        # Filter students by faculty section for the report too
         if faculty.section:
             students = StudentProfile.objects.filter(section=faculty.section).order_by('roll_no')
         else:
@@ -347,11 +280,10 @@ def attendance_report_view(request):
                     if att.status == 'P':
                         row['present'] += 1
                 except Attendance.DoesNotExist:
-                    row['statuses'].append('-')  # No record for this date
+                    row['statuses'].append('-')  
             if row['total'] > 0:
                 row['pct'] = round((row['present'] / row['total']) * 100, 1)
             report_data.append(row)
-
     context = {
         'subjects':         subjects,
         'selected_subject': selected_subject,
@@ -363,26 +295,18 @@ def attendance_report_view(request):
 
 @faculty_required
 def absentee_list_view(request):
-    """
-    Shows all absentee logs for the faculty's subjects.
-    Faculty can filter by subject and date range.
-    """
     faculty  = request.user.faculty_profile
     subjects = Subject.objects.filter(faculty=faculty)
-
     subject_id = request.GET.get('subject')
     from_date  = request.GET.get('from_date')
     to_date    = request.GET.get('to_date')
-
     logs = AbsenteeLog.objects.filter(subject__in=subjects).order_by('-date')
-
     if subject_id:
         logs = logs.filter(subject_id=subject_id)
     if from_date:
         logs = logs.filter(date__gte=from_date)
     if to_date:
         logs = logs.filter(date__lte=to_date)
-
     context = {
         'logs':     logs,
         'subjects': subjects,
@@ -393,21 +317,13 @@ def absentee_list_view(request):
 
 @faculty_required
 def create_makeup_session_view(request):
-    """
-    Faculty creates a new Make-Up / Remedial session.
-    System auto-generates a unique 6-character code.
-    Faculty sets expiry time.
-    """
     faculty = request.user.faculty_profile
     form    = MakeUpSessionForm(faculty=faculty, data=request.POST or None)
-
     if request.method == 'POST' and form.is_valid():
         session               = form.save(commit=False)
         session.created_by    = faculty
-        session.remedial_code = generate_remedial_code()  # Auto-generate unique code
+        session.remedial_code = generate_remedial_code()  
         session.save()
-
-        # Notify all students who were absent in this subject
         absent_students = StudentProfile.objects.filter(
             absentee_logs__subject=session.subject
         ).distinct()
@@ -440,30 +356,13 @@ def makeup_sessions_list_view(request):
     context  = {'sessions': sessions}
     return render(request, 'faculty/makeup_sessions.html', context)
 
-
-# ════════════════════════════════════════════════════════
-#  SECTION 3 — STUDENT VIEWS
-# ════════════════════════════════════════════════════════
-
 @student_required
 def student_dashboard_view(request):
-    """
-    Student dashboard:
-    - Overall attendance summary per subject
-    - Unread notification count
-    - Recent make-up attendance records
-    - Attendance chart data (passed as JSON for Chart.js)
-    """
     student = request.user.student_profile
-    summary = get_student_subject_summary(student)  # List of dicts per subject
-
-    # Make-up attendance records
+    summary = get_student_subject_summary(student)  
     makeup_records = MakeUpAttendance.objects.filter(student=student).order_by('-marked_at')[:5]
-
-    # Prepare data for Chart.js doughnut/bar chart
     chart_labels = [item['subject'].name for item in summary]
     chart_data   = [item['percentage'] for item in summary]
-
     context = {
         'student':         student,
         'summary':         summary,
@@ -472,28 +371,15 @@ def student_dashboard_view(request):
         'chart_data':      chart_data,
     }
     return render(request, 'student/dashboard.html', context)
-
-
 @student_required
 def my_attendance_view(request):
-    """
-    Detailed attendance view for the logged-in student.
-    Shows regular + make-up attendance separately.
-    """
     student = request.user.student_profile
-
-    # Filter by subject if requested
     subject_id = request.GET.get('subject')
-
     regular_records = Attendance.objects.filter(student=student).order_by('-date')
     if subject_id:
         regular_records = regular_records.filter(subject_id=subject_id)
-
     makeup_records = MakeUpAttendance.objects.filter(student=student).order_by('-marked_at')
-
-    # All subjects this student has records for (for the dropdown)
     my_subjects = Subject.objects.filter(attendances__student=student).distinct()
-
     context = {
         'regular_records': regular_records,
         'makeup_records':  makeup_records,
@@ -502,44 +388,24 @@ def my_attendance_view(request):
     }
     return render(request, 'student/my_attendance.html', context)
 
-
 @student_required
 def enter_remedial_code_view(request):
-    """
-    Student enters a remedial code to mark make-up attendance.
-
-    Validation checks:
-      1. Code exists in database
-      2. Code has not expired (expiry_time > now)
-      3. Student hasn't already used this code
-    """
     student = request.user.student_profile
     form    = RemedialCodeForm(request.POST or None)
-
     if request.method == 'POST' and form.is_valid():
         code = form.cleaned_data['code']
-
-        # Check 1: Does this code exist?
         try:
             session = MakeUpSession.objects.get(remedial_code=code)
         except MakeUpSession.DoesNotExist:
             messages.error(request, f"Invalid code: '{code}' not found.")
             return render(request, 'student/enter_remedial.html', {'form': form})
-
-        # Check 2: Has the code expired?
         if not session.is_active():
             messages.error(request, f"Code '{code}' has expired. Please contact your faculty.")
             return render(request, 'student/enter_remedial.html', {'form': form})
-
-        # Check 3: Has student already used this code?
         if MakeUpAttendance.objects.filter(student=student, session=session).exists():
             messages.warning(request, f"You have already marked attendance for this make-up session.")
             return render(request, 'student/enter_remedial.html', {'form': form})
-
-        # All checks passed — mark the make-up attendance
         MakeUpAttendance.objects.create(student=student, session=session)
-
-        # Create a confirmation notification
         Notification.objects.create(
             user=student.user,
             message=(
@@ -560,16 +426,8 @@ def enter_remedial_code_view(request):
 
 @student_required
 def notifications_view(request):
-    """
-    Shows all notifications for the logged-in student.
-    Marks all as read when this page is opened.
-    """
     notifications = Notification.objects.filter(user=request.user).order_by('-timestamp')
-
-    # Mark all as read (bulk update for efficiency)
     notifications.filter(is_read=False).update(is_read=True)
-
-    # Also mark AbsenteeLog entries as acknowledged
     if hasattr(request.user, 'student_profile'):
         AbsenteeLog.objects.filter(
             student=request.user.student_profile,
@@ -579,39 +437,19 @@ def notifications_view(request):
     context = {'notifications': notifications}
     return render(request, 'student/notifications.html', context)
 
-
-# ════════════════════════════════════════════════════════
-#  SECTION 4 — ADMIN / ANALYTICS VIEW
-# ════════════════════════════════════════════════════════
-
 @login_required
 def admin_analytics_view(request):
-    """
-    Analytics page — accessible to superusers and staff.
-    Shows system-wide stats:
-      - Total students, faculty, subjects
-      - Attendance trend (last 30 days)
-      - Subject-wise attendance bar chart data
-    """
-    # Only true admins (superuser or non-faculty staff) can view analytics
     if not request.user.is_staff or hasattr(request.user, 'faculty_profile'):
         messages.error(request, "Admin access only.")
         return redirect('home')
-
     today     = timezone.now().date()
     month_ago = today - datetime.timedelta(days=30)
-
-    # System stats
     total_students  = StudentProfile.objects.count()
     total_faculty   = FacultyProfile.objects.count()
     total_subjects  = Subject.objects.count()
     total_records   = Attendance.objects.count()
-
-    # Attendance by status (for pie chart)
     present_count = Attendance.objects.filter(status='P').count()
     absent_count  = Attendance.objects.filter(status='A').count()
-
-    # Last 30 days daily attendance trend (for line chart)
     trend_data = []
     for i in range(30, 0, -1):
         d      = today - datetime.timedelta(days=i)
@@ -619,7 +457,6 @@ def admin_analytics_view(request):
         a      = Attendance.objects.filter(date=d, status='A').count()
         trend_data.append({'date': d.strftime('%d/%m'), 'present': p, 'absent': a})
 
-    # Subject-wise pass percentage (for bar chart)
     subjects     = Subject.objects.all()
     subject_stats = []
     for s in subjects:
@@ -640,60 +477,27 @@ def admin_analytics_view(request):
     }
     return render(request, 'admin_dashboard/analytics.html', context)
 
-
-# ════════════════════════════════════════════════════════
-#  SECTION 5 — FACE RECOGNITION API (AJAX)
-# ════════════════════════════════════════════════════════
-
 import base64
-
 @faculty_required
 def recognize_faces_api(request):
-    """
-    AJAX / POST endpoint called by the webcam JS on the Mark Attendance page.
-
-    Receives:
-        image  — base64-encoded JPEG data-URI from the browser canvas
-                 e.g.  "data:image/jpeg;base64,/9j/4AAQ..."
-
-    Returns JSON:
-        {
-          "recognized_ids": [12, 37, 5],   ← student IDs found in the frame
-          "face_rects": [{"x":..,"y":..,"w":..,"h":..}],
-          "error": null | "error message"
-        }
-    """
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
-
     image_data = request.POST.get('image', '')
     if not image_data:
         return JsonResponse({'error': 'No image data received.'}, status=400)
-
-    # Strip the data-URI prefix: "data:image/jpeg;base64,<data>"
     if ',' in image_data:
         image_data = image_data.split(',', 1)[1]
-
     try:
         image_bytes = base64.b64decode(image_data)
     except Exception:
         return JsonResponse({'error': 'Invalid base64 image.'}, status=400)
-
-    # Faculty section — only match students in the same section
     section = request.user.faculty_profile.section or None
-
     result = recognize_faces_in_frame(image_bytes, section=section)
     return JsonResponse(result)
 
 
 @login_required
 def retrain_face_model_view(request):
-    """
-    Admin-only AJAX endpoint to retrain the LBPH face model from all
-    student photos currently in the database.
-
-    Returns JSON:  {"trained": 12, "errors": [...]}
-    """
     if not request.user.is_staff:
         return JsonResponse({'error': 'Admin only.'}, status=403)
 
