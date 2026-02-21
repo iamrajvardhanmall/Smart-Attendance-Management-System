@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Student — Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-0">
+            <i class="bi bi-person-plus-fill text-primary me-2"></i>Add New Student
+        </h3>
+        <small class="text-muted">Admin creates student accounts. Students cannot self-register.</small>
+    </div>
+    <a href="{% url 'analytics' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Analytics
+    </a>
+</div>
+
+<div class="row g-4">
+
+    <!-- ── CREATION FORM ───────────────────────────── -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white fw-bold">
+                <i class="bi bi-plus-circle me-2"></i>Create Student Account
+            </div>
+            <div class="card-body p-4">
+
+                <!-- Rule reminder -->
+                <div class="alert alert-info py-2 small mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    The <strong>8-digit Registration Number</strong> is the student's login ID.
+                    It must contain digits only (e.g. <code>12345678</code>).
+                </div>
+
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+
+                    <!-- Registration Number + Password -->
+                    <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">
+                        <i class="bi bi-key me-1"></i>Login Credentials
+                    </h6>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Registration Number <span class="text-danger">*</span>
+                            <span class="badge bg-secondary ms-1">8 digits</span>
+                        </label>
+                        {{ form.registration_number }}
+                        {% if form.registration_number.errors %}
+                            <div class="text-danger small mt-1">
+                                <i class="bi bi-exclamation-circle me-1"></i>{{ form.registration_number.errors.0 }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">This becomes the student's login username.</div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+                            {{ form.password1 }}
+                            {% if form.password1.errors %}
+                                <div class="text-danger small mt-1">{{ form.password1.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+                            {{ form.password2 }}
+                        </div>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>{{ form.non_field_errors.0 }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Personal Info -->
+                    <h6 class="fw-bold text-primary border-bottom pb-2 mb-3 mt-4">
+                        <i class="bi bi-person me-1"></i>Student Details
+                    </h6>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">First Name <span class="text-danger">*</span></label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Last Name <span class="text-danger">*</span></label>
+                            {{ form.last_name }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email</label>
+                        {{ form.email }}
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Department <span class="text-danger">*</span></label>
+                            {{ form.department }}
+                            {% if form.department.errors %}
+                                <div class="text-danger small mt-1">{{ form.department.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Year <span class="text-danger">*</span></label>
+                            {{ form.year }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Parent Email</label>
+                        {{ form.parent_email }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">
+                            Section
+                            <span class="badge bg-warning text-dark ms-1">important</span>
+                        </label>
+                        {{ form.section }}
+                        <div class="form-text text-warning fw-semibold">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            {{ form.section.help_text }}
+                        </div>
+                        {% if form.section.errors %}
+                            <div class="text-danger small mt-1">{{ form.section.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Face Recognition Photo -->
+                    <div class="mb-4 p-3 border border-primary rounded bg-light">
+                        <label class="form-label fw-semibold text-primary">
+                            <i class="bi bi-camera me-1"></i>{{ form.photo.label }}
+                            <span class="badge bg-success ms-1">Recommended</span>
+                        </label>
+                        {{ form.photo }}
+                        <div class="form-text">
+                            <i class="bi bi-info-circle me-1"></i>
+                            {{ form.photo.help_text }}
+                        </div>
+                        {% if form.photo.errors %}
+                            <div class="text-danger small mt-1">{{ form.photo.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-person-check me-2"></i>Create Student Account
+                    </button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ── EXISTING STUDENTS TABLE ─────────────────── -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent fw-bold border-0 pt-3 d-flex justify-content-between">
+                <span><i class="bi bi-people text-primary me-2"></i>Registered Students</span>
+                <span class="badge bg-primary">{{ students.count }} total</span>
+            </div>
+
+            <!-- Search -->
+            <div class="px-3 pt-2 pb-1">
+                <input type="text" id="tableSearch" class="form-control form-control-sm"
+                       placeholder="Search by name or registration number...">
+            </div>
+
+            <div class="card-body p-0">
+                {% if students %}
+                <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                    <table class="table table-hover mb-0 table-sm">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th>Reg. No.</th>
+                                <th>Name</th>
+                                <th>Dept</th>
+                                <th>Year</th>
+                                <th>Section</th>
+                                <th class="text-center">Photo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td><code class="fw-bold">{{ student.roll_no }}</code></td>
+                            <td>{{ student.user.get_full_name }}</td>
+                            <td><span class="badge bg-secondary">{{ student.department }}</span></td>
+                            <td>{{ student.get_year_display }}</td>
+                            <td>
+                                {% if student.section %}
+                                    <span class="badge bg-info text-dark">{{ student.section }}</span>
+                                {% else %}
+                                    <span class="text-muted small">Not assigned</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if student.photo %}
+                                    <img src="{{ student.photo.url }}" alt=""
+                                         class="rounded-circle border"
+                                         style="width:32px;height:32px;object-fit:cover;"
+                                         title="{{ student.user.get_full_name }}">
+                                {% else %}
+                                    <i class="bi bi-camera-slash text-muted" title="No photo"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
+                    No students registered yet.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

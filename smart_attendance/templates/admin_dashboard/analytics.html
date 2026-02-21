@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics — Smart Attendance System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-0">
+            <i class="bi bi-graph-up-arrow text-primary me-2"></i>Analytics Dashboard
+        </h3>
+        <small class="text-muted">System-wide attendance statistics (Admin Only)</small>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'admin_create_student' %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-person-plus me-1"></i>Add Student
+        </a>
+        <a href="{% url 'admin_create_faculty' %}" class="btn btn-sm btn-success">
+            <i class="bi bi-person-badge me-1"></i>Add Faculty
+        </a>
+        <a href="/admin/" class="btn btn-sm btn-outline-dark">
+            <i class="bi bi-gear me-1"></i>Admin Panel
+        </a>
+    </div>
+</div>
+
+<!-- ── STATS OVERVIEW ─────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm text-center bg-primary text-white py-3">
+            <i class="bi bi-people-fill fs-1 mb-1 opacity-75"></i>
+            <div class="fs-1 fw-bold">{{ total_students }}</div>
+            <div class="small">Total Students</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm text-center bg-success text-white py-3">
+            <i class="bi bi-person-badge-fill fs-1 mb-1 opacity-75"></i>
+            <div class="fs-1 fw-bold">{{ total_faculty }}</div>
+            <div class="small">Total Faculty</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm text-center bg-warning text-white py-3">
+            <i class="bi bi-book-fill fs-1 mb-1 opacity-75"></i>
+            <div class="fs-1 fw-bold">{{ total_subjects }}</div>
+            <div class="small">Subjects</div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm text-center bg-info text-white py-3">
+            <i class="bi bi-clipboard-data-fill fs-1 mb-1 opacity-75"></i>
+            <div class="fs-1 fw-bold">{{ total_records }}</div>
+            <div class="small">Total Records</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── CHARTS ROW ──────────────────────────────────── -->
+<div class="row g-4 mb-4">
+
+    <!-- Present vs Absent Pie Chart -->
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent fw-bold border-0 pt-3">
+                <i class="bi bi-pie-chart-fill text-primary me-2"></i>Overall Attendance Split
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <canvas id="pieChart" style="max-height:280px;"></canvas>
+            </div>
+            <div class="card-footer bg-transparent text-center border-0 pb-3">
+                <span class="badge bg-success me-2">Present: {{ present_count }}</span>
+                <span class="badge bg-danger">Absent: {{ absent_count }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject-wise Bar Chart -->
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent fw-bold border-0 pt-3">
+                <i class="bi bi-bar-chart-fill text-success me-2"></i>Subject-wise Attendance %
+            </div>
+            <div class="card-body">
+                <canvas id="barChart" style="max-height:280px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── TREND LINE CHART ───────────────────────────── -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-transparent fw-bold border-0 pt-3">
+        <i class="bi bi-graph-up text-info me-2"></i>Last 30 Days Attendance Trend
+    </div>
+    <div class="card-body">
+        <canvas id="trendChart" style="max-height:280px;"></canvas>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const trendData = {{ trend_data|safe }};
+const subjectStats = {{ subject_stats|safe }};
+
+// ─── PIE CHART: Present vs Absent ───────────────────
+new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Present', 'Absent'],
+        datasets: [{
+            data: [{{ present_count }}, {{ absent_count }}],
+            backgroundColor: ['#198754', '#dc3545'],
+            borderWidth: 3,
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+                callbacks: {
+                    label: ctx => {
+                        const total = {{ present_count }} + {{ absent_count }};
+                        const pct = total > 0 ? Math.round(ctx.raw / total * 100) : 0;
+                        return ` ${ctx.label}: ${ctx.raw} (${pct}%)`;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// ─── BAR CHART: Subject-wise % ───────────────────────
+if (subjectStats.length > 0) {
+    new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+            labels: subjectStats.map(s => s.name),
+            datasets: [{
+                label: 'Attendance %',
+                data: subjectStats.map(s => s.percentage),
+                backgroundColor: subjectStats.map(s =>
+                    s.percentage >= 75 ? '#198754' :
+                    s.percentage >= 60 ? '#ffc107' : '#dc3545'
+                ),
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    min: 0, max: 100,
+                    ticks: { callback: v => v + '%' }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.raw}%` } }
+            }
+        }
+    });
+}
+
+// ─── LINE CHART: 30-day Trend ────────────────────────
+new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+        labels: trendData.map(d => d.date),
+        datasets: [
+            {
+                label: 'Present',
+                data: trendData.map(d => d.present),
+                borderColor: '#198754',
+                backgroundColor: 'rgba(25,135,84,0.1)',
+                fill: true,
+                tension: 0.3,
+            },
+            {
+                label: 'Absent',
+                data: trendData.map(d => d.absent),
+                borderColor: '#dc3545',
+                backgroundColor: 'rgba(220,53,69,0.1)',
+                fill: true,
+                tension: 0.3,
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: { beginAtZero: true }
+        },
+        interaction: { intersect: false, mode: 'index' },
+        plugins: { legend: { position: 'top' } }
+    }
+});
+</script>
+{% endblock %}

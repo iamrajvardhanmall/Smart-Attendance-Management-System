@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Faculty — Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-0">
+            <i class="bi bi-person-badge-fill text-success me-2"></i>Add New Faculty
+        </h3>
+        <small class="text-muted">Admin creates faculty accounts. Faculty cannot self-register.</small>
+    </div>
+    <a href="{% url 'analytics' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Analytics
+    </a>
+</div>
+
+<div class="row g-4">
+
+    <!-- ── CREATION FORM ───────────────────────────── -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white fw-bold">
+                <i class="bi bi-plus-circle me-2"></i>Create Faculty Account
+            </div>
+            <div class="card-body p-4">
+
+                <!-- Rule reminder -->
+                <div class="alert alert-info py-2 small mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    The <strong>5-character Faculty ID</strong> is the faculty's login ID.
+                    It must be exactly 5 characters (e.g. <code>FAC01</code>).
+                </div>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <!-- Faculty ID + Password -->
+                    <h6 class="fw-bold text-success border-bottom pb-2 mb-3">
+                        <i class="bi bi-key me-1"></i>Login Credentials
+                    </h6>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Faculty ID <span class="text-danger">*</span>
+                            <span class="badge bg-secondary ms-1">5 characters</span>
+                        </label>
+                        {{ form.faculty_id }}
+                        {% if form.faculty_id.errors %}
+                            <div class="text-danger small mt-1">
+                                <i class="bi bi-exclamation-circle me-1"></i>{{ form.faculty_id.errors.0 }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">This becomes the faculty's login username. e.g. FAC01, T0023</div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+                            {{ form.password1 }}
+                            {% if form.password1.errors %}
+                                <div class="text-danger small mt-1">{{ form.password1.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+                            {{ form.password2 }}
+                        </div>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>{{ form.non_field_errors.0 }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Personal Info -->
+                    <h6 class="fw-bold text-success border-bottom pb-2 mb-3 mt-4">
+                        <i class="bi bi-person me-1"></i>Faculty Details
+                    </h6>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">First Name <span class="text-danger">*</span></label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Last Name <span class="text-danger">*</span></label>
+                            {{ form.last_name }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email</label>
+                        {{ form.email }}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Department <span class="text-danger">*</span></label>
+                        {{ form.department }}
+                        {% if form.department.errors %}
+                            <div class="text-danger small mt-1">{{ form.department.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">
+                            Section
+                            <span class="badge bg-secondary ms-1">optional</span>
+                        </label>
+                        {{ form.section }}
+                        <div class="form-text">{{ form.section.help_text }}</div>
+                        {% if form.section.errors %}
+                            <div class="text-danger small mt-1">{{ form.section.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-person-check me-2"></i>Create Faculty Account
+                    </button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ── EXISTING FACULTY TABLE ──────────────────── -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent fw-bold border-0 pt-3 d-flex justify-content-between">
+                <span><i class="bi bi-person-badge text-success me-2"></i>Registered Faculty</span>
+                <span class="badge bg-success">{{ faculty_list.count }} total</span>
+            </div>
+
+            <!-- Search -->
+            <div class="px-3 pt-2 pb-1">
+                <input type="text" id="tableSearch" class="form-control form-control-sm"
+                       placeholder="Search by name or faculty ID...">
+            </div>
+
+            <div class="card-body p-0">
+                {% if faculty_list %}
+                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-hover mb-0 table-sm">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th>Faculty ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Section</th>
+                                <th>Subjects</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for faculty in faculty_list %}
+                        <tr>
+                            <td><code class="fw-bold">{{ faculty.employee_id }}</code></td>
+                            <td>Prof. {{ faculty.user.get_full_name }}</td>
+                            <td><span class="badge bg-secondary">{{ faculty.department }}</span></td>
+                            <td>
+                                {% if faculty.section %}
+                                    <span class="badge bg-info text-dark">{{ faculty.section }}</span>
+                                {% else %}
+                                    <span class="text-muted small">Not assigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ faculty.subjects.count }} subjects</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-person-badge fs-1 d-block mb-2 opacity-25"></i>
+                    No faculty registered yet.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

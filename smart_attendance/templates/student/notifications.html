@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifications — Smart Attendance{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0">
+        <i class="bi bi-bell-fill text-warning me-2"></i>Notifications
+    </h3>
+    <a href="{% url 'student_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Dashboard
+    </a>
+</div>
+
+{% if notifications %}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center pt-3">
+        <span class="fw-bold">All Notifications</span>
+        <span class="badge bg-secondary">{{ notifications.count }} total</span>
+    </div>
+
+    <div class="list-group list-group-flush">
+        {% for notif in notifications %}
+        <div class="list-group-item list-group-item-action {% if not notif.is_read %}list-group-item-warning{% endif %} p-3">
+            <div class="d-flex align-items-start">
+                <div class="me-3 mt-1">
+                    {% if "Absent" in notif.message %}
+                        <i class="bi bi-person-x-fill text-danger fs-4"></i>
+                    {% elif "Make-Up" in notif.message %}
+                        <i class="bi bi-calendar-check-fill text-success fs-4"></i>
+                    {% else %}
+                        <i class="bi bi-bell-fill text-warning fs-4"></i>
+                    {% endif %}
+                </div>
+                <div class="flex-grow-1">
+                    <p class="mb-1 {% if not notif.is_read %}fw-semibold{% endif %}">
+                        {{ notif.message }}
+                    </p>
+                    <small class="text-muted">
+                        <i class="bi bi-clock me-1"></i>
+                        {{ notif.timestamp|date:"d M Y, H:i" }}
+                        {% if not notif.is_read %}
+                        <span class="badge bg-warning text-dark ms-2">New</span>
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% else %}
+<div class="text-center py-5">
+    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex p-4 mb-3">
+        <i class="bi bi-bell-slash text-success" style="font-size: 3rem;"></i>
+    </div>
+    <h5>No Notifications</h5>
+    <p class="text-muted">You're all caught up! Notifications will appear here when faculty marks you absent or schedules a make-up class.</p>
+</div>
+{% endif %}
+
+{% endblock %}

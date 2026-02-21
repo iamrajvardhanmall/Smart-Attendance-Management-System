@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Enter Remedial Code — Smart Attendance{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-3">
+    <div class="col-md-6 col-lg-5">
+
+        <div class="text-center mb-4">
+            <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex p-4 mb-3">
+                <i class="bi bi-key-fill text-success" style="font-size: 3rem;"></i>
+            </div>
+            <h3 class="fw-bold">Enter Remedial Code</h3>
+            <p class="text-muted">Enter the 6-character code provided by your faculty to mark make-up class attendance.</p>
+        </div>
+
+        <div class="card border-0 shadow">
+            <div class="card-body p-4">
+                <form method="post" id="remedialForm">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-center d-block">Remedial Code</label>
+                        {{ form.code }}
+                        {% if form.code.errors %}
+                            <div class="text-danger text-center small mt-2">{{ form.code.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 btn-lg" id="submitBtn">
+                        <i class="bi bi-check2-circle me-2"></i>Verify & Mark Attendance
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Info box -->
+        <div class="card border-info border-opacity-50 mt-3">
+            <div class="card-body bg-info bg-opacity-10 py-3">
+                <h6 class="fw-bold text-info border-0">
+                    <i class="bi bi-info-circle me-1"></i>Code Rules
+                </h6>
+                <ul class="mb-0 small text-muted">
+                    <li>Code is <strong>6 characters</strong>, uppercase letters and digits</li>
+                    <li>Each code has an <strong>expiry time</strong> — enter before it expires</li>
+                    <li>Each code can only be used <strong>once per student</strong></li>
+                    <li>Make-up records are stored <strong>separately</strong> from regular attendance</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="{% url 'student_dashboard' %}" class="text-muted small text-decoration-none">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-uppercase input as user types
+document.getElementById('id_code').addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+});
+
+// Quick validation before submit
+document.getElementById('remedialForm').addEventListener('submit', function(e) {
+    const code = document.getElementById('id_code').value.trim();
+    if (code.length < 4) {
+        e.preventDefault();
+        alert('Please enter a valid remedial code (at least 4 characters).');
+    }
+});
+</script>
+{% endblock %}
+
+

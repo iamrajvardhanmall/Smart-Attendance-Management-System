@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Login — Smart Attendance System{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center bg-light" style="margin-top: -1.5rem;">
+    <div class="col-md-5 col-lg-4">
+
+        <div class="text-center mb-4">
+            <i class="bi bi-mortarboard-fill text-primary" style="font-size: 3rem;"></i>
+            <h2 class="fw-bold mt-2">Smart Attendance</h2>
+            <p class="text-muted">Sign in to your account</p>
+        </div>
+
+        <div class="card shadow border-0">
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-person-badge me-1"></i>Registration No. / Faculty ID
+                        </label>
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                            <div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-lock me-1"></i>Password
+                        </label>
+                        {{ form.password }}
+                        {% if form.password.errors %}
+                            <div class="text-danger small mt-1">{{ form.password.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger py-2">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        {{ form.non_field_errors.0 }}
+                    </div>
+                    {% endif %}
+
+                    <button type="submit" class="btn btn-primary w-100 mt-2">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Info box: no self-registration -->
+        <div class="alert alert-info mt-4 small text-center py-2">
+            <i class="bi bi-info-circle me-1"></i>
+            <strong>Students</strong> use their <strong>8-digit Registration Number</strong> &nbsp;|&nbsp;
+            <strong>Faculty</strong> use their <strong>5-character Faculty ID</strong>.<br>
+            Accounts are created by the <strong>System Admin</strong>. Contact admin if you don't have credentials.
+        </div>
+
+    </div>
+</div>
+{% endblock %}

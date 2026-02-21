@@ -1,0 +1,242 @@
+﻿{% extends 'base.html' %}
+{% load attendance_tags %}
+
+{% block title %}Mark Attendance — Smart Attendance{% endblock %}
+
+{% block extra_head %}
+<style>
+.student-row { transition: background-color 0.2s; }
+.student-row:hover { background-color: #f8f9fa; }
+.present-row { background-color: #d1e7dd !important; }
+
+@keyframes faceFlash {
+    0%   { background-color: #fff3cd; }
+    50%  { background-color: #ffe066; box-shadow: 0 0 8px #ffc107; }
+    100% { background-color: #d1e7dd; }
+}
+.face-recognized-flash { animation: faceFlash 1.5s ease forwards; }
+
+#cameraSection { border: 2px dashed #0d6efd; border-radius: 10px; }
+#cameraWrapper {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+}
+#cameraFeed { width: 100%; max-height: 340px; display: block; border-radius: 8px; }
+#faceOverlay { position: absolute; top: 0; left: 0; pointer-events: none; width: 100%; height: 100%; }
+#captureCanvas { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0"><i class="bi bi-check2-square text-primary me-2"></i>Mark Attendance</h3>
+    <div class="d-flex align-items-center gap-2">
+        {% if request.user.faculty_profile.section %}
+        <span class="badge bg-info text-dark fs-6"><i class="bi bi-people me-1"></i>Section: {{ request.user.faculty_profile.section }}</span>
+        {% else %}
+        <span class="badge bg-secondary fs-6"><i class="bi bi-people me-1"></i>All Sections</span>
+        {% endif %}
+        <a href="{% url 'faculty_dashboard' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
+    </div>
+</div>
+
+<!-- STEP 1: SELECT SUBJECT + DATE -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-primary text-white fw-bold"><i class="bi bi-funnel me-2"></i>Step 1: Select Subject and Date</div>
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label fw-semibold">Subject</label>
+                {{ filter_form.subject }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Date</label>
+                {{ filter_form.date }}
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-people me-1"></i>Load Students</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if students %}
+
+<!-- STEP 2: FACE RECOGNITION CAMERA -->
+<div id="cameraSection" class="card border-0 shadow-sm mb-4 p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-camera-video me-2"></i>Step 2: Face Recognition (Auto-Mark)</h5>
+            <small class="text-muted">Open the webcam to automatically detect and mark present students. You can still manually adjust below.</small>
+        </div>
+        <span class="badge bg-primary fs-6" id="recognizedCount">0 auto-marked</span>
+    </div>
+
+    <div id="cameraStatus" class="alert alert-secondary py-2 mb-3 small">
+        <i class="bi bi-camera-video-off me-1"></i>Camera is off. Click <strong>Start Camera</strong> to begin face recognition.
+    </div>
+
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+        <button id="btnStartCamera" type="button" class="btn btn-success"><i class="bi bi-camera-video me-1"></i>Start Camera</button>
+        <button id="btnStopCamera" type="button" class="btn btn-danger d-none"><i class="bi bi-camera-video-off me-1"></i>Stop Camera</button>
+        <button id="btnCaptureNow" type="button" class="btn btn-outline-primary d-none"><i class="bi bi-camera me-1"></i>Scan Now</button>
+        <span class="text-muted align-self-center small ms-2"><i class="bi bi-info-circle me-1"></i>Auto-scans every 2 s.</span>
+    </div>
+
+    <div id="cameraContainer" class="d-none text-center">
+        <div id="cameraWrapper" class="mx-auto" style="max-width:640px;">
+            <video id="cameraFeed" autoplay muted playsinline></video>
+            <canvas id="faceOverlay"></canvas>
+        </div>
+        <canvas id="captureCanvas"></canvas>
+    </div>
+
+    <div class="mt-3 p-2 bg-light rounded small text-muted">
+        <strong>Tips:</strong> Good lighting, students face camera directly.
+    </div>
+</div>
+
+<!-- STEP 3: STUDENT LIST -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-people me-2"></i>Step 3: Review &amp; Submit — {{ subject.name }} | {{ selected_date|date:"d F Y" }}</span>
+        <span class="badge bg-white text-success">{{ students.count }} students</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center p-3 bg-light border-bottom">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="markAllPresent" onclick="toggleAll(this)">
+                <label class="form-check-label fw-semibold" for="markAllPresent">Mark All Present</label>
+            </div>
+            <div>
+                <span class="badge bg-success me-2" id="presentCount">0 Present</span>
+                <span class="badge bg-danger" id="absentCount">{{ students.count }} Absent</span>
+            </div>
+        </div>
+
+        <form method="post" id="attendanceForm">
+            {% csrf_token %}
+            <input type="hidden" name="subject_id" value="{{ subject.id }}">
+            <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="attendanceTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width:60px;" class="text-center">Present</th>
+                            <th style="width:120px;">Roll No</th>
+                            <th>Student Name</th>
+                            <th>Department</th>
+                            <th>Year</th>
+                            <th style="width:60px;" class="text-center">Photo</th>
+                            {% if existing_map %}<th>Previous</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for student in students %}
+                    <tr class="student-row {% if existing_map %}{% if existing_map|get_item:student.id == 'P' %}present-row{% endif %}{% endif %}" id="row-{{ student.id }}">
+                        <td class="text-center">
+                            <input class="form-check-input attendance-checkbox" type="checkbox"
+                                name="present_students" value="{{ student.id }}" id="s-{{ student.id }}"
+                                onchange="updateRow({{ student.id }}, this)"
+                                {% if existing_map %}{% if existing_map|get_item:student.id == 'P' %}checked{% endif %}{% endif %}>
+                        </td>
+                        <td><code>{{ student.roll_no }}</code></td>
+                        <td><label for="s-{{ student.id }}" class="mb-0" style="cursor:pointer;">{{ student.user.get_full_name }}</label></td>
+                        <td class="text-muted small">{{ student.department }}</td>
+                        <td class="text-muted small">{{ student.get_year_display }}</td>
+                        <td class="text-center">
+                            {% if student.photo %}
+                            <img src="{{ student.photo.url }}" alt="" class="rounded-circle border" style="width:36px;height:36px;object-fit:cover;" title="{{ student.user.get_full_name }}">
+                            {% else %}
+                            <i class="bi bi-person-fill text-muted fs-5" title="No photo"></i>
+                            {% endif %}
+                        </td>
+                        {% if existing_map %}
+                        <td>
+                            <span class="badge {% if existing_map|get_item:student.id == 'P' %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if existing_map|get_item:student.id == 'P' %}Present{% else %}Absent{% endif %}
+                            </span>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="p-3 border-top bg-light d-flex justify-content-between align-items-center">
+                <div class="text-muted small"><i class="bi bi-info-circle me-1"></i>Unchecked students will be automatically marked <strong>Absent</strong>.</div>
+                <button type="submit" class="btn btn-success px-4" onclick="return confirmSubmit()"><i class="bi bi-save me-2"></i>Save Attendance</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% elif request.GET %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    {% if request.user.faculty_profile.section %}
+        No students found in <strong>Section {{ request.user.faculty_profile.section }}</strong>.
+        Ask the admin to assign students to this section via <a href="{% url 'admin_create_student' %}" class="alert-link">Add Student</a>.
+    {% else %}
+        No students found. Make sure the admin has registered students in the system.
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/camera.js"></script>
+<script>
+const totalStudents = {{ students.count|default:0 }};
+
+function updateCounters() {
+    const checked = document.querySelectorAll('.attendance-checkbox:checked').length;
+    document.getElementById('presentCount').textContent = checked + ' Present';
+    document.getElementById('absentCount').textContent = (totalStudents - checked) + ' Absent';
+}
+
+function updateRow(studentId, checkbox) {
+    const row = document.getElementById('row-' + studentId);
+    row.classList.toggle('present-row', checkbox.checked);
+    updateCounters();
+}
+
+function toggleAll(masterCheckbox) {
+    document.querySelectorAll('.attendance-checkbox').forEach(cb => {
+        cb.checked = masterCheckbox.checked;
+        document.getElementById('row-' + cb.value).classList.toggle('present-row', masterCheckbox.checked);
+    });
+    updateCounters();
+}
+
+function confirmSubmit() {
+    const present = document.querySelectorAll('.attendance-checkbox:checked').length;
+    const absent = totalStudents - present;
+    return confirm(`Confirm Attendance:\n Present: ${present} students\n Absent: ${absent} students\n\nClick OK to save.`);
+}
+
+function retrainModel(e) {
+    e.preventDefault();
+    if (!confirm('Re-train the face recognition model from all student photos?')) return;
+    fetch('/api/retrain-face-model/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' }
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) { alert('Error: ' + d.error); return; }
+        alert(`Model retrained!\n${d.trained} student(s) encoded.\n` + (d.errors.length ? 'Warnings:\n' + d.errors.join('\n') : ''));
+    })
+    .catch(err => alert('Request failed: ' + err));
+}
+
+document.addEventListener('DOMContentLoaded', updateCounters);
+</script>
+{% endblock %}

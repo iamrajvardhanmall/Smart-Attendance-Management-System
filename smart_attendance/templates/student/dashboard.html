@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% load attendance_tags %}
+
+{% block title %}Student Dashboard — Smart Attendance{% endblock %}
+
+{% block extra_head %}
+<style>
+.stat-card { transition: transform 0.2s; }
+.stat-card:hover { transform: translateY(-3px); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-0">
+            <i class="bi bi-person-circle text-primary me-2"></i>Student Dashboard
+        </h3>
+        <small class="text-muted">
+            {{ student.user.get_full_name }} | Roll: {{ student.roll_no }} |
+            {{ student.department }} | {{ student.get_year_display }}
+            {% if student.section %}
+                | <span class="badge bg-info text-dark">Section: {{ student.section }}</span>
+            {% endif %}
+        </small>
+    </div>
+    <a href="{% url 'notifications' %}" class="btn btn-outline-primary position-relative">
+        <i class="bi bi-bell me-1"></i>Notifications
+        {% if unread_count > 0 %}
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+            {{ unread_count }}
+        </span>
+        {% endif %}
+    </a>
+</div>
+
+<!-- ── SUBJECT ATTENDANCE CARDS ───────────────────── -->
+{% if summary %}
+<div class="row g-3 mb-4">
+    {% for item in summary %}
+    <div class="col-sm-6 col-xl-4 stat-card">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="fw-bold mb-0">{{ item.subject.name }}</h6>
+                        <small class="text-muted">{{ item.subject.code }}</small>
+                    </div>
+                    <span class="badge bg-{{ item.percentage|percentage_color }} fs-6">
+                        {{ item.percentage }}%
+                    </span>
+                </div>
+
+                <!-- Progress bar -->
+                <div class="progress mt-3 mb-2" style="height: 8px;" title="{{ item.percentage }}%">
+                    <div class="progress-bar bg-{{ item.percentage|percentage_color }}"
+                         role="progressbar"
+                         style="width: {{ item.percentage }}%">
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between small text-muted">
+                    <span><i class="bi bi-check2 text-success me-1"></i>Present: {{ item.present }}</span>
+                    <span><i class="bi bi-x text-danger me-1"></i>Absent: {{ item.absent }}</span>
+                    <span>Total: {{ item.total }}</span>
+                </div>
+
+                <!-- Status badge -->
+                <div class="mt-2">
+                    {% if item.status == 'Safe' %}
+                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Safe</span>
+                    {% elif item.status == 'Warning' %}
+                        <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Warning</span>
+                    {% else %}
+                        <span class="badge bg-danger"><i class="bi bi-exclamation-octagon me-1"></i>Low Attendance</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ── CHART ─────────────────────────────────────── -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent fw-bold border-0 pt-3">
+                <i class="bi bi-pie-chart text-primary me-2"></i>Attendance by Subject
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <canvas id="attendanceChart" style="max-height: 260px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-transparent fw-bold border-0 pt-3">
+                <i class="bi bi-lightning text-warning me-2"></i>Quick Actions
+            </div>
+            <div class="card-body d-grid gap-2">
+                <a href="{% url 'my_attendance' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-calendar3 me-2"></i>View Detailed Attendance
+                </a>
+                <a href="{% url 'enter_remedial' %}" class="btn btn-outline-success">
+                    <i class="bi bi-key me-2"></i>Enter Remedial Code
+                </a>
+                <a href="{% url 'notifications' %}" class="btn btn-outline-warning">
+                    <i class="bi bi-bell me-2"></i>View Notifications
+                    {% if unread_count > 0 %}
+                        <span class="badge bg-danger ms-1">{{ unread_count }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── RECENT MAKE-UP ATTENDANCE ─────────────────── -->
+{% if makeup_records %}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-transparent fw-bold border-0 pt-3">
+        <i class="bi bi-calendar-check text-info me-2"></i>Make-Up Attendance History
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Subject</th><th>Make-Up Date</th><th>Remedial Code</th><th>Marked At</th></tr>
+                </thead>
+                <tbody>
+                {% for record in makeup_records %}
+                <tr>
+                    <td>{{ record.session.subject.name }}</td>
+                    <td>{{ record.session.date|date:"d M Y" }}</td>
+                    <td><code>{{ record.session.remedial_code }}</code></td>
+                    <td class="text-muted small">{{ record.marked_at|date:"d M Y H:i" }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+    <p class="text-muted mt-3">No attendance records found yet.</p>
+    <p class="text-muted small">Your records will appear here once faculty marks attendance.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Chart.js — Subject-wise Attendance Donut Chart
+const labels = {{ chart_labels|safe }};
+const data   = {{ chart_data|safe }};
+
+if (labels.length > 0) {
+    const colors = [
+        '#0d6efd', '#198754', '#ffc107', '#dc3545',
+        '#0dcaf0', '#6f42c1', '#fd7e14', '#20c997'
+    ];
+
+    const ctx = document.getElementById('attendanceChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors.slice(0, labels.length),
+                borderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, padding: 10 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.label}: ${ctx.raw}%`
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

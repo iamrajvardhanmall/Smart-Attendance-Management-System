@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load attendance_tags %}
+
+{% block title %}My Attendance — Smart Attendance{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0">
+        <i class="bi bi-calendar3 text-primary me-2"></i>My Attendance
+    </h3>
+    <a href="{% url 'student_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Dashboard
+    </a>
+</div>
+
+<!-- Filter by Subject -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Filter by Subject</label>
+                <select name="subject" class="form-select">
+                    <option value="">All Subjects</option>
+                    {% for subj in my_subjects %}
+                    <option value="{{ subj.id }}" {% if selected_subject == subj.id|stringformat:"s" %}selected{% endif %}>
+                        {{ subj.code }} — {{ subj.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Filter
+                </button>
+                {% if selected_subject %}
+                <a href="{% url 'my_attendance' %}" class="btn btn-outline-secondary ms-1">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabs: Regular | Make-Up -->
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#regular">
+            <i class="bi bi-calendar me-1"></i>Regular Attendance
+            <span class="badge bg-primary ms-1">{{ regular_records.count }}</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#makeup">
+            <i class="bi bi-calendar-check me-1"></i>Make-Up Attendance
+            <span class="badge bg-success ms-1">{{ makeup_records.count }}</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+
+    <!-- REGULAR ATTENDANCE TAB -->
+    <div class="tab-pane fade show active" id="regular">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                {% if regular_records %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>#</th>
+                                <th>Subject</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Marked By</th>
+                                <th>Recorded At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for record in regular_records %}
+                        <tr class="{% if record.status == 'A' %}table-danger{% endif %}">
+                            <td class="text-muted small">{{ forloop.counter }}</td>
+                            <td>
+                                <strong>{{ record.subject.code }}</strong>
+                                <div class="text-muted small">{{ record.subject.name }}</div>
+                            </td>
+                            <td>{{ record.date|date:"d M Y" }}</td>
+                            <td>
+                                {% if record.status == 'P' %}
+                                    <span class="badge bg-success fs-6">
+                                        <i class="bi bi-check me-1"></i>Present
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger fs-6">
+                                        <i class="bi bi-x me-1"></i>Absent
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted small">{{ record.marked_by.user.get_full_name }}</td>
+                            <td class="text-muted small">{{ record.marked_at|date:"d M H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-5 text-center text-muted">
+                    <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+                    No regular attendance records found.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- MAKE-UP ATTENDANCE TAB -->
+    <div class="tab-pane fade" id="makeup">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                {% if makeup_records %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr><th>#</th><th>Subject</th><th>Make-Up Date</th><th>Code Used</th><th>Marked At</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for record in makeup_records %}
+                        <tr>
+                            <td class="text-muted small">{{ forloop.counter }}</td>
+                            <td><strong>{{ record.session.subject.code }}</strong><br>
+                                <small class="text-muted">{{ record.session.subject.name }}</small></td>
+                            <td>{{ record.session.date|date:"d M Y" }}</td>
+                            <td><code>{{ record.session.remedial_code }}</code></td>
+                            <td class="text-muted small">{{ record.marked_at|date:"d M Y H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-5 text-center text-muted">
+                    <i class="bi bi-key fs-1 d-block mb-2"></i>
+                    No make-up attendance records.
+                    <p><a href="{% url 'enter_remedial' %}" class="text-decoration-none">Enter a remedial code</a></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

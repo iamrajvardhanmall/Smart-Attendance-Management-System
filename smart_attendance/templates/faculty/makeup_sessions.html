@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Make-Up Sessions — Smart Attendance{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0">
+        <i class="bi bi-calendar-event text-info me-2"></i>Make-Up Sessions
+    </h3>
+    <a href="{% url 'create_makeup' %}" class="btn btn-success">
+        <i class="bi bi-plus-circle me-1"></i>New Make-Up Session
+    </a>
+</div>
+
+{% if sessions %}
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>#</th>
+                        <th>Subject</th>
+                        <th>Class Date</th>
+                        <th>Remedial Code</th>
+                        <th>Expires At</th>
+                        <th>Status</th>
+                        <th>Attendees</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for session in sessions %}
+                <tr>
+                    <td class="text-muted small">{{ forloop.counter }}</td>
+                    <td>
+                        <strong>{{ session.subject.code }}</strong>
+                        <div class="text-muted small">{{ session.subject.name }}</div>
+                    </td>
+                    <td>{{ session.date|date:"d M Y" }}</td>
+                    <td>
+                        <code class="fs-5 fw-bold {% if session.is_active %}text-success{% else %}text-muted{% endif %}">
+                            {{ session.remedial_code }}
+                        </code>
+                    </td>
+                    <td class="small text-muted">{{ session.expiry_time|date:"d M Y H:i" }}</td>
+                    <td>
+                        {% if session.is_active %}
+                        <span class="badge bg-success">
+                            <i class="bi bi-check-circle me-1"></i>Active
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-clock-history me-1"></i>Expired
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge bg-info text-dark">
+                            {{ session.makeup_attendances.count }} students
+                        </span>
+                    </td>
+                    <td class="text-muted small">
+                        {{ session.description|default:"—"|truncatewords:8 }}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-calendar-x text-muted" style="font-size: 4rem;"></i>
+    <p class="text-muted mt-3">No make-up sessions created yet.</p>
+    <a href="{% url 'create_makeup' %}" class="btn btn-success">
+        <i class="bi bi-plus-circle me-1"></i>Create First Make-Up Session
+    </a>
+</div>
+{% endif %}
+
+{% endblock %}
