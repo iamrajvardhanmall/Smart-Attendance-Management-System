@@ -255,7 +255,7 @@ def attendance_report_view(request):
     subjects = Subject.objects.filter(faculty=faculty)
     selected_subject = None
     report_data      = []
-    date_list        = [
+    date_list        = []
     subject_id = request.GET.get('subject')
     if subject_id:
         selected_subject = get_object_or_404(Subject, id=subject_id, faculty=faculty)
